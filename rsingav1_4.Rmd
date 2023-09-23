@@ -7,21 +7,26 @@ output:
 date: "2023-09-21"
 ---
 
-# Firstly installing and loading lpSolve library
+# Firstly installing and loading lpSolveAPI library
 ```{r}
-library(lpSolve)
+library(lpSolveAPI)
 ```
 
 #Decision Variables:
 L1, M1, S1: Number of large, medium, and small units produced at Plant 1.
 L2, M2, S2: Number of large, medium, and small units produced at Plant 2.
 L3, M3, S3: Number of large, medium, and small units produced at Plant 3.
+There are 9 in number: 
+```{r}
+# Create a model with 9 decision variables
+lprec_weigelt = make.lp(0, 9)
+```
 
 # Objective Function: Maximize P = 420*(L1 + L2 + L3) + 360*(M1 + M2 + M3) + 300*(S1 + S2 + S3)
 
 # Define the objective function coefficients (net unit profit). In this case, the net unit profit for each product: Large, Medium and small
 ```{r}
-profit_obj_function = c(420, 420, 420, 360, 360, 360, 300, 300, 300)
+set.objfn(lprec_weigelt, c(420, 420, 420, 360, 360, 360, 300, 300, 300))
 ```
 
 # Define the constraint matrix. This includes the production capacities of 3 plants, storage space for each plant, Sales forecast, Same percentage of their excess capacity
@@ -61,48 +66,49 @@ S1 + S2 + S3 <= 750
 Technically, we can use just two of these three equations as the third equation is just a combination of the first two and the solution would be the same. But I have used all the 3 here just for the sake of completeness.
 
 ```{r}
-# Constraint Matrix
-all_constraints = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0,   # Plant 1 capacity
-                  0, 1, 0, 0, 1, 0, 0, 1, 0,   # Plant 2 capacity
-                  0, 0, 1, 0, 0, 1, 0, 0, 1,   # Plant 3 capacity
-                  20, 0, 0, 15, 0, 0, 12, 0, 0,   # Plant 1 storage
-                  0, 20, 0, 0, 15, 0, 0, 12, 0,   # Plant 2 storage
-                  0, 0, 20, 0, 0, 15, 0, 0, 12,   # Plant 3 storage
-                  1, 1, 1, 0, 0, 0, 0, 0, 0,   # Sales forecast large
-                  0, 0, 0, 1, 1, 1, 0, 0, 0,   # Sales forecast medium
-                  0, 0, 0, 0, 0, 0, 1, 1, 1,  # Sales forecast small
-                  900, -750, 0, 900, -750, 0, 900, -750, 0, # Same percentage of their excess capacity
-                  -450, 0, 750, -450, 0, 750, -450, 0, 750, # Same percentage of their excess capacity
-                  0, 450, -900, 0, 450, -900, 0, 450, -900 # Same percentage of their excess capacity
-                  ),
-                  nrow=12, byrow=TRUE)
+# Adding constraints and defining the constraint directions and right hand side of the constraints as per the question: 
+add.constraint(lprec_weigelt, c(1, 0, 0, 1, 0, 0, 1, 0, 0), "<=", 750) # Plant 1 capacity
+add.constraint(lprec_weigelt, c(0, 1, 0, 0, 1, 0, 0, 1, 0), "<=", 900) # Plant 2 capacity
+add.constraint(lprec_weigelt, c(0, 0, 1, 0, 0, 1, 0, 0, 1), "<=", 450) # Plant 3 capacity
+add.constraint(lprec_weigelt, c(20, 0, 0, 15, 0, 0, 12, 0, 0), "<=", 13000) # Plant 1 storage
+add.constraint(lprec_weigelt, c(0, 20, 0, 0, 15, 0, 0, 12, 0), "<=", 12000) # Plant 2 storage
+add.constraint(lprec_weigelt, c(0, 0, 20, 0, 0, 15, 0, 0, 12), "<=", 5000) # Plant 3 storage
+add.constraint(lprec_weigelt, c(1, 1, 1, 0, 0, 0, 0, 0, 0), "<=", 900)# Sales forecast large
+add.constraint(lprec_weigelt, c(0, 0, 0, 1, 1, 1, 0, 0, 0), "<=", 1200)# Sales forecast medium
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 0, 0, 1, 1, 1), "<=", 750)# Sales forecast small
+add.constraint(lprec_weigelt, c(900, -750, 0, 900, -750, 0, 900, -750, 0), "=", 0) # Same percentage of their excess capacity
+add.constraint(lprec_weigelt, c(-450, 0, 750, -450, 0, 750, -450, 0, 750), "=", 0)# Same percentage of their excess capacity
+add.constraint(lprec_weigelt, c(0, 450, -900, 0, 450, -900, 0, 450, -900), "=", 0)# Same percentage of their excess capacity
+add.constraint(lprec_weigelt, c(1, 0, 0, 0, 0, 0, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 1, 0, 0, 0, 0, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 1, 0, 0, 0, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 1, 0, 0, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 1, 0, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 0, 1, 0, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 0, 0, 1, 0, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 0, 0, 0, 1, 0), ">=", 0) # NonNegative constraint
+add.constraint(lprec_weigelt, c(0, 0, 0, 0, 0, 0, 0, 0, 1), ">=", 0) # NonNegative constraint
 
-# I am not mentioning the Non-negativity constraints because the lpSolve assumes that the decision variables are non-negative so we do not need to explicitly add these constraints.
 ```
 
-
-# Define the constraint directions as per the question: 
 ```{r}
-# Directions of the constraints
-constraint_directions = c("<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "=", "=", "=")
+# Set all variables to be integer as we do not want float values for the unit sizes
+for (i in 1:9) {
+  set.type(lprec_weigelt, i, "integer")
+}
 ```
 
-# Define the right-hand side of the constraints. These are the available storage space, production capacities, sales forecast and same percentage of excess capacity values
-
-```{r}
-# Right-hand side of the constraints
-constraints_rhs = c(750, 900, 450, 13000, 12000, 5000, 900, 1200, 750, 0, 0, 0)
-```
-
-
-# Using the lp() function to solve this optimization problem
-```{r}
 # Solve the linear programming problem by maximizing the profit while meeting the constraints
-# all.int = TRUE is to output answers in integer and not floats
-result = lp("max", profit_obj_function, all_constraints, constraint_directions, constraints_rhs, all.int=TRUE)
+
+```{r}
+# Set the objective function to maximize
+lp.control(lprec_weigelt, sense='max')
+
+# Solve the linear programming model
+solve(lprec_weigelt)
 ```
 
-This will give you the optimal production amounts for each size at each plant to maximize profit, subject to the constraints.
+# This will give you the optimal production amounts for each size at each plant to maximize profit, subject to the constraints.
 L1 = 530
 L2 = 0
 L3 = 1
@@ -113,11 +119,24 @@ S1 = 0
 S2 = 140
 S3 = 405
 ```{r}
-print(result$solution)   
+
+# Get the solution
+all_unit_sizes_for_all_plants = get.variables(lprec_weigelt)
+print(all_unit_sizes_for_all_plants)
 ```
 
-Also the optimal profit or maximum profit is: 694680$
+# Also the optimal profit or maximum profit is: 694680$
 ```{r}
-print(result$objval)
+# Get the optimal profit
+maximum_profit = get.objective(lprec_weigelt)
+print(maximum_profit) 
 ```
+
+
+# Writing the above lp model to a file:
+```{r}
+write.lp(lprec_weigelt, filename = "weigelt_lp.lp")
+```
+
+
 
