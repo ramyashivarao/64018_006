@@ -1,0 +1,123 @@
+---
+title: "rsingav1_4"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+date: "2023-09-21"
+---
+
+# Firstly installing and loading lpSolve library
+```{r}
+library(lpSolve)
+```
+
+#Decision Variables:
+L1, M1, S1: Number of large, medium, and small units produced at Plant 1.
+L2, M2, S2: Number of large, medium, and small units produced at Plant 2.
+L3, M3, S3: Number of large, medium, and small units produced at Plant 3.
+
+# Objective Function: Maximize P = 420*(L1 + L2 + L3) + 360*(M1 + M2 + M3) + 300*(S1 + S2 + S3)
+
+# Define the objective function coefficients (net unit profit). In this case, the net unit profit for each product: Large, Medium and small
+```{r}
+profit_obj_function = c(420, 420, 420, 360, 360, 360, 300, 300, 300)
+```
+
+# Define the constraint matrix. This includes the production capacities of 3 plants, storage space for each plant, Sales forecast, Same percentage of their excess capacity
+
+# More details on Constraints:
+
+# Capacity Constraints for each plant:
+
+L1 + M1 + S1 <= 750
+L2 + M2 + S2 <= 900
+L3 + M3 + S3 <= 450
+
+# In-process Storage Space Constraints for each plant:
+
+20*L1 + 15*M1 + 12*S1 <= 13000
+20*L2 + 15*M2 + 12*S2 <= 12000
+20*L3 + 15*M3 + 12*S3 <= 5000
+
+# Sales Forecast Constraints for each size:
+
+L1 + L2 + L3 <= 900
+M1 + M2 + M3 <= 1200
+S1 + S2 + S3 <= 750
+
+# Non-negativity Constraints: L1, M1, S1, L2, M2, S2, L3, M3, S3 >= 0
+
+# One last constraint to avoid layoffs is to introduce a condition that the ratio of utilized capacity to total capacity should be the same for all plants. This can be represented as:
+
+(L1 + M1 + S1) / 750 = (L2 + M2 + S2) / 900 = (L3 + M3 + S3) / 450
+
+# This constraint is a bit tricky because it's a ratio, which is nonlinear and cannot be solved by lpSolve. However, we can transform it into a linear form by cross multiplication:
+
+900 * (L1 + M1 + S1) - 750 * (L2 + M2 + S2) =0
+450 * (L1 + M1 + S1) - 750 * (L3 + M3 + S3) =0
+450 * (L2 + M2 + S2) - 900 * (L3 + M3 + S3) =0
+
+Technically, we can use just two of these three equations as the third equation is just a combination of the first two and the solution would be the same. But I have used all the 3 here just for the sake of completeness.
+
+```{r}
+# Constraint Matrix
+all_constraints = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0,   # Plant 1 capacity
+                  0, 1, 0, 0, 1, 0, 0, 1, 0,   # Plant 2 capacity
+                  0, 0, 1, 0, 0, 1, 0, 0, 1,   # Plant 3 capacity
+                  20, 0, 0, 15, 0, 0, 12, 0, 0,   # Plant 1 storage
+                  0, 20, 0, 0, 15, 0, 0, 12, 0,   # Plant 2 storage
+                  0, 0, 20, 0, 0, 15, 0, 0, 12,   # Plant 3 storage
+                  1, 1, 1, 0, 0, 0, 0, 0, 0,   # Sales forecast large
+                  0, 0, 0, 1, 1, 1, 0, 0, 0,   # Sales forecast medium
+                  0, 0, 0, 0, 0, 0, 1, 1, 1,  # Sales forecast small
+                  900, -750, 0, 900, -750, 0, 900, -750, 0, # Same percentage of their excess capacity
+                  -450, 0, 750, -450, 0, 750, -450, 0, 750, # Same percentage of their excess capacity
+                  0, 450, -900, 0, 450, -900, 0, 450, -900 # Same percentage of their excess capacity
+                  ),
+                  nrow=12, byrow=TRUE)
+
+# I am not mentioning the Non-negativity constraints because the lpSolve assumes that the decision variables are non-negative so we do not need to explicitly add these constraints.
+```
+
+
+# Define the constraint directions as per the question: 
+```{r}
+# Directions of the constraints
+constraint_directions = c("<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "=", "=", "=")
+```
+
+# Define the right-hand side of the constraints. These are the available storage space, production capacities, sales forecast and same percentage of excess capacity values
+
+```{r}
+# Right-hand side of the constraints
+constraints_rhs = c(750, 900, 450, 13000, 12000, 5000, 900, 1200, 750, 0, 0, 0)
+```
+
+
+# Using the lp() function to solve this optimization problem
+```{r}
+# Solve the linear programming problem by maximizing the profit while meeting the constraints
+# all.int = TRUE is to output answers in integer and not floats
+result = lp("max", profit_obj_function, all_constraints, constraint_directions, constraints_rhs, all.int=TRUE)
+```
+
+This will give you the optimal production amounts for each size at each plant to maximize profit, subject to the constraints.
+L1 = 530
+L2 = 0
+L3 = 1
+M1 = 160
+M2 = 688
+M3 = 8
+S1 = 0
+S2 = 140
+S3 = 405
+```{r}
+print(result$solution)   
+```
+
+Also the optimal profit or maximum profit is: 694680$
+```{r}
+print(result$objval)
+```
+
